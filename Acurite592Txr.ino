@@ -1,16 +1,14 @@
-const int Samples = 50;
-const unsigned int Resolution = 50;
 const int Pin = 4;
-int c=0;
 int pinState=LOW;
 int state = 0;
 
-bool collecting = false;
-unsigned int High[Samples];
-unsigned int Low[Samples];
 unsigned long last=0;
 unsigned long lastTransition;
-unsigned int msgBit[42];
+
+const int msgLength=56;
+char thisBit;
+char msgBit[msgLength];
+char lastBit[msgLength];
 int bitCnt;
 
 void setup() {
@@ -50,9 +48,10 @@ top:
           state = 0;
         }
         break;
-      case 1: // seen a sync high expect low
+      case 1: // first (low) half of bit
         if (dur >  150 && dur < 450)
         {
+          thisBit = (dur < 300)?'0':'1';
           state = 2;
         }
         else
@@ -60,24 +59,36 @@ top:
           state = 0;
         }
         break;
-      case 2: // seen a sync low expect a short or long
+        
+      case 2: // second (high) half of bit
         if (dur >  150 && dur < 450)
         {
-          msgBit[bitCnt++] =dur;
-          if (bitCnt > 38)
+          if (((dur < 300)?'0':'1') == thisBit)
+            msgBit[bitCnt++] = '?';
+          else
+            msgBit[bitCnt++] = thisBit;
+            
+          state = 1;
+          if (bitCnt == msgLength)
           {
+            // show changed bits
             for (int i=0; i < bitCnt; i++)
             {
-              if (msgBit[i] < 300)
-                Serial.print('.');
+              if (msgBit[i] != lastBit[i])
+              {
+                lastBit[i] = msgBit[i];
+                Serial.print('x');
+              }
               else
-                Serial.print('1');
+                Serial.print(' ');
+              if ((i&7) == 7) Serial.print(' ');
             }
-            Serial.print(" - ");
+            Serial.println();
+
             for (int i=0; i < bitCnt; i++)
             {
-                Serial.print(msgBit[i]);
-                Serial.print(", ");
+              Serial.print(msgBit[i]);
+              if ((i&7) == 7) Serial.print(' ');
             }
             Serial.println();
             Serial.flush();
