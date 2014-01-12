@@ -7,6 +7,7 @@ unsigned long lastTransition;
 
 const int msgLength=56;
 char thisBit;
+byte msg[7];
 char msgBit[msgLength];
 char lastBit[msgLength];
 int bitCnt;
@@ -63,6 +64,8 @@ top:
       case 2: // second (high) half of bit
         if (dur >  150 && dur < 450)
         {
+          msg[bitCnt>>3] = msg[bitCnt>>3] & ((0x80 >>(bitCnt & 0x7))^0xFF) | (dur < 300) << (7-(bitCnt & 0x7));
+          
           if (((dur < 300)?'0':'1') == thisBit)
             msgBit[bitCnt++] = '?';
           else
@@ -90,6 +93,14 @@ top:
               Serial.print(msgBit[i]);
               if ((i&7) == 7) Serial.print(' ');
             }
+            int humidity = msg[3] & 0x7F;
+            int temp = (((msg[4] & 0x7F) << 7) | (msg[5] & 0x7F))-1000;
+            Serial.print(" - ");
+            Serial.print(temp);
+            Serial.print("C, ");
+            Serial.print(humidity);
+            Serial.print("%");
+            
             Serial.println();
             Serial.flush();
             state = 0;
